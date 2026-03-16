@@ -156,7 +156,15 @@ document.getElementById('insights-btn').addEventListener('click', async () => {
     const res = await fetch(`${API}/analytics/projects/${currentProjectId}/insights`);
     const data = await res.json();
 
-    insightsText.innerHTML = `<p>${data.ai_insight.replace(/\n/g, '<br>')}</p>`;
+    insightsText.innerHTML = data.ai_insight
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ol>$1</ol>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
 });
 // Init
 loadProjects();
