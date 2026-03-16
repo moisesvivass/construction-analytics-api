@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
+from app.database import engine
+from app import models
 import os
 
 load_dotenv()
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=os.getenv("APP_NAME", "Construction Analytics API"),
