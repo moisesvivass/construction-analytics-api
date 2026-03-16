@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
+from app.models import ProjectStatus
 from typing import List
 
 router = APIRouter(
@@ -13,6 +14,13 @@ router = APIRouter(
 @router.get("/", response_model=List[schemas.ProjectResponse])
 def get_projects(db: Session = Depends(get_db)):
     projects = db.query(models.Project).all()
+    return projects
+
+@router.get("/active")
+def get_active_projects(db: Session = Depends(get_db)):
+    projects = db.query(models.Project).filter(
+        models.Project.status == ProjectStatus.active
+    ).all()
     return projects
 
 
@@ -27,7 +35,6 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
             detail=f"Project with id {project_id} not found"
         )
     return project
-
 
 @router.post("/", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
