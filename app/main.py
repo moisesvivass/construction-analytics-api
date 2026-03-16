@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 from app.database import engine
 from app import models
+from app.routers import projects
+from app.routers import expenses
+from app.routers import categories
 import os
 
 load_dotenv()
@@ -14,6 +17,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.include_router(projects.router)
+app.include_router(expenses.router)
+app.include_router(categories.router)
 
 @app.get("/")
 def root():
