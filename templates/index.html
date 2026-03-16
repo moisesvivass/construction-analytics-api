@@ -28,7 +28,10 @@
         <section class="section" id="project-detail" style="display:none">
             <div class="detail-header">
                 <h2 id="detail-title">Project Detail</h2>
-                <button id="export-btn" class="btn-export">Export Excel</button>
+                <div class="header-buttons">
+                    <button id="export-btn" class="btn-export">Export Excel</button>
+                    <button id="insights-btn" class="btn-insights">AI Insights</button>
+                </div>
             </div>
 
             <!-- Summary Cards -->
@@ -49,6 +52,11 @@
                     <span class="card-label">% Used</span>
                     <span class="card-value" id="card-percent">-</span>
                 </div>
+            </div>
+
+            <div id="insights-box" style="display:none" class="insights-box">
+                <h3>AI Analysis</h3>
+                <div id="insights-text"></div>
             </div>
 
             <!-- Charts -->

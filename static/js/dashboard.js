@@ -143,5 +143,20 @@ document.getElementById('export-btn').addEventListener('click', () => {
     }
 });
 
+// AI Insights
+document.getElementById('insights-btn').addEventListener('click', async () => {
+    if (!currentProjectId) return;
+    
+    const insightsBox = document.getElementById('insights-box');
+    const insightsText = document.getElementById('insights-text');
+    
+    insightsBox.style.display = 'block';
+    insightsText.innerHTML = '<p class="loading">Analyzing project with AI...</p>';
+
+    const res = await fetch(`${API}/analytics/projects/${currentProjectId}/insights`);
+    const data = await res.json();
+
+    insightsText.innerHTML = `<p>${data.ai_insight.replace(/\n/g, '<br>')}</p>`;
+});
 // Init
 loadProjects();
