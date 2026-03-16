@@ -5,6 +5,7 @@ from app import models
 from app.routers import projects
 from app.routers import expenses
 from app.routers import categories
+from app.routers import analytics
 import os
 
 load_dotenv()
@@ -20,6 +21,7 @@ app = FastAPI(
 app.include_router(projects.router)
 app.include_router(expenses.router)
 app.include_router(categories.router)
+app.include_router(analytics.router)
 
 @app.get("/")
 def root():
