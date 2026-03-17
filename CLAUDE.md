@@ -43,7 +43,7 @@ Copy `.env.example` to `.env` and fill in:
 
 - Pydantic schemas in `app/schemas.py` define request/response shapes — keep these in sync with `app/models.py`.
 - `numpy.bool` serialization issues have come up before — use `bool()` to cast before returning from analytics endpoints.
-- The frontend API base URL is hardcoded as `http://127.0.0.1:8000` in `dashboard.js`.
+- The frontend API base URL is an empty string `''` in `dashboard.js`, so all requests use relative URLs and work both locally and in production.
 - CORS is whitelisted to `localhost:3000` and `127.0.0.1:8000` — update `app/main.py` if adding new origins.
 - Rate limiting is applied via SlowAPI — limits are set per endpoint in the analytics router.
 - No authentication exists — this is intentional (internal/demo use). See `SECURITY.md` for the production roadmap.
