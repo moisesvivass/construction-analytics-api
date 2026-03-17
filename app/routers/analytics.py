@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.database import get_db
 from app import models, schemas
 from typing import List
@@ -13,6 +14,8 @@ router = APIRouter(
     prefix="/analytics",
     tags=["analytics"]
 )
+
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 @router.get("/projects/{project_id}/summary")
@@ -58,29 +61,37 @@ def get_project_summary(project_id: int, db: Session = Depends(get_db)):
 
 @router.get("/overruns")
 def get_overruns(db: Session = Depends(get_db)):
-    projects = db.query(models.Project).all()
-    overruns = []
+    total_projects = db.query(models.Project).count()
 
-    for project in projects:
-        expenses = db.query(models.Expense).filter(
-            models.Expense.project_id == project.id
-        ).all()
-        total_spent = sum(e.amount for e in expenses)
+    rows = (
+        db.query(
+            models.Project.id,
+            models.Project.name,
+            models.Project.budget,
+            func.coalesce(func.sum(models.Expense.amount), 0).label("total_spent"),
+        )
+        .outerjoin(models.Expense, models.Expense.project_id == models.Project.id)
+        .group_by(models.Project.id, models.Project.name, models.Project.budget)
+        .having(func.coalesce(func.sum(models.Expense.amount), 0) > models.Project.budget)
+        .all()
+    )
 
-        if total_spent > project.budget:
-            overruns.append({
-                "project_id": project.id,
-                "project_name": project.name,
-                "budget": project.budget,
-                "total_spent": round(total_spent, 2),
-                "overrun_amount": round(total_spent - project.budget, 2),
-                "overrun_percent": round(((total_spent - project.budget) / project.budget) * 100, 2)
-            })
+    overruns = [
+        {
+            "project_id": row.id,
+            "project_name": row.name,
+            "budget": row.budget,
+            "total_spent": round(row.total_spent, 2),
+            "overrun_amount": round(row.total_spent - row.budget, 2),
+            "overrun_percent": round(((row.total_spent - row.budget) / row.budget) * 100, 2),
+        }
+        for row in rows
+    ]
 
     return {
-        "total_projects": len(projects),
+        "total_projects": total_projects,
         "projects_in_overrun": len(overruns),
-        "overruns": overruns
+        "overruns": overruns,
     }
 
 
@@ -222,12 +233,14 @@ Cost breakdown by category:
 
 Provide a professional financial analysis with specific recommendations based on the numbers."""
 
-    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=300,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    try:
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}]
+        )
+    except Exception:
+        raise HTTPException(status_code=503, detail="AI insights temporarily unavailable")
 
     insight = message.content[0].text
 
