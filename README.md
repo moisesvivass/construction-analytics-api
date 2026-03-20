@@ -152,6 +152,4 @@ Visit `http://127.0.0.1:8000/docs` to explore the API locally.
 
 **Moises Vivas** — CS graduate building backend systems in Python · Toronto, Canada
 
-Combining construction domain expertise with modern backend engineering to build tools that solve real problems in the field.
-
 - GitHub: [github.com/moisesvivass](https://github.com/moisesvivass)
