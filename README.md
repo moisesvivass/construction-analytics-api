@@ -6,6 +6,10 @@
 [![Claude AI](https://img.shields.io/badge/Claude-Haiku-orange)](https://anthropic.com)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
+**The problem:** Construction companies collect cost data but rarely analyze it. Budget overruns get noticed at project close, not in time to act.
+
+**What this solves:** A REST API that exposes real-time budget analytics and AI-generated financial insights, turning raw cost data into actionable decisions for project managers.
+
 A production-ready REST API for analyzing construction project costs, budgets, and overruns — powered by FastAPI, PostgreSQL, and the Claude AI API. Built as a portfolio project to demonstrate real-world backend engineering in a domain-specific context.
 
 ## 🚀 Live Demo
