@@ -3,61 +3,95 @@ let budgetChart = null;
 let breakdownChart = null;
 let currentProjectId = null;
 
-// Format currency
+const CAD_FORMATTER = new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: 'CAD',
+    minimumFractionDigits: 0
+});
+
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-CA', {
-        style: 'currency',
-        currency: 'CAD',
-        minimumFractionDigits: 0
-    }).format(amount);
+    return CAD_FORMATTER.format(amount);
 }
 
-// Load all projects
 async function loadProjects() {
-    const res = await fetch(`${API}/projects/`);
-    const projects = await res.json();
     const grid = document.getElementById('projects-grid');
+    try {
+        const res = await fetch(`${API}/projects/`);
+        if (!res.ok) {
+            grid.textContent = 'Failed to load projects. Please try again.';
+            return;
+        }
+        const projects = await res.json();
 
-    if (projects.length === 0) {
-        grid.innerHTML = '<p class="loading">No projects found.</p>';
-        return;
+        if (projects.length === 0) {
+            grid.textContent = 'No projects found.';
+            return;
+        }
+
+        grid.innerHTML = '';
+        projects.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.addEventListener('click', () => loadProjectDetail(p.id));
+
+            const badge = document.createElement('span');
+            badge.className = `status-badge status-${p.status}`;
+            badge.textContent = p.status.replace('_', ' ');
+
+            const title = document.createElement('h3');
+            title.textContent = p.name;
+
+            const location = document.createElement('p');
+            location.className = 'location';
+            location.textContent = p.location || 'No location set';
+
+            const budget = document.createElement('p');
+            budget.className = 'budget';
+            budget.textContent = `Budget: ${formatCurrency(p.budget)}`;
+
+            card.appendChild(badge);
+            card.appendChild(title);
+            card.appendChild(location);
+            card.appendChild(budget);
+            grid.appendChild(card);
+        });
+    } catch {
+        grid.textContent = 'Error connecting to server.';
     }
-
-    grid.innerHTML = projects.map(p => `
-        <div class="project-card" onclick="loadProjectDetail(${p.id})">
-            <span class="status-badge status-${p.status}">${p.status.replace('_', ' ')}</span>
-            <h3>${p.name}</h3>
-            <p class="location">${p.location || 'No location set'}</p>
-            <p class="budget">Budget: ${formatCurrency(p.budget)}</p>
-        </div>
-    `).join('');
 }
 
-// Load project detail
 async function loadProjectDetail(projectId) {
     currentProjectId = projectId;
 
-    const [summaryRes, breakdownRes, expensesRes] = await Promise.all([
-        fetch(`${API}/analytics/projects/${projectId}/summary`),
-        fetch(`${API}/analytics/projects/${projectId}/breakdown`),
-        fetch(`${API}/expenses/project/${projectId}`)
-    ]);
+    let summary, breakdown, expenses;
+    try {
+        const [summaryRes, breakdownRes, expensesRes] = await Promise.all([
+            fetch(`${API}/analytics/projects/${projectId}/summary`),
+            fetch(`${API}/analytics/projects/${projectId}/breakdown`),
+            fetch(`${API}/expenses/project/${projectId}`)
+        ]);
 
-    const summary = await summaryRes.json();
-    const breakdown = await breakdownRes.json();
-    const expenses = await expensesRes.json();
+        if (!summaryRes.ok || !breakdownRes.ok || !expensesRes.ok) {
+            alert('Failed to load project details. Please try again.');
+            return;
+        }
 
-    // Show detail section
+        summary = await summaryRes.json();
+        breakdown = await breakdownRes.json();
+        expenses = await expensesRes.json();
+    } catch {
+        alert('Error connecting to server.');
+        return;
+    }
+
     document.getElementById('project-detail').style.display = 'block';
     document.getElementById('detail-title').textContent = summary.project_name;
 
-    // Summary cards
     document.getElementById('card-budget').textContent = formatCurrency(summary.budget);
     document.getElementById('card-spent').textContent = formatCurrency(summary.total_spent);
     document.getElementById('card-remaining').textContent = formatCurrency(summary.remaining);
     document.getElementById('card-percent').textContent = `${summary.percent_used}%`;
 
-    // Overrun warning
     const existingWarning = document.querySelector('.overrun-warning');
     if (existingWarning) existingWarning.remove();
 
@@ -71,7 +105,6 @@ async function loadProjectDetail(projectId) {
         );
     }
 
-    // Budget vs Spent chart
     if (budgetChart) budgetChart.destroy();
     budgetChart = new Chart(document.getElementById('budget-chart'), {
         type: 'bar',
@@ -95,7 +128,6 @@ async function loadProjectDetail(projectId) {
         }
     });
 
-    // Breakdown donut chart
     if (breakdownChart) breakdownChart.destroy();
     const colors = ['#4f8ef7', '#f87171', '#34d399', '#fbbf24', '#a78bfa', '#fb923c'];
 
@@ -121,50 +153,58 @@ async function loadProjectDetail(projectId) {
         }
     });
 
-    // Expenses table
     const tbody = document.getElementById('expenses-body');
-    tbody.innerHTML = expenses.map(e => `
-        <tr>
-            <td>${e.date}</td>
-            <td>${e.description}</td>
-            <td>${e.category.name}</td>
-            <td>${formatCurrency(e.amount)}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = '';
+    expenses.forEach(e => {
+        const row = document.createElement('tr');
+        [e.date, e.description, e.category.name, formatCurrency(e.amount)].forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell;
+            row.appendChild(td);
+        });
+        tbody.appendChild(row);
+    });
 
-    // Scroll to detail
     document.getElementById('project-detail').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Export Excel
 document.getElementById('export-btn').addEventListener('click', () => {
     if (currentProjectId) {
         window.location.href = `${API}/analytics/projects/${currentProjectId}/export`;
     }
 });
 
-// AI Insights
 document.getElementById('insights-btn').addEventListener('click', async () => {
     if (!currentProjectId) return;
-    
+
     const insightsBox = document.getElementById('insights-box');
     const insightsText = document.getElementById('insights-text');
-    
+
     insightsBox.style.display = 'block';
     insightsText.innerHTML = '<p class="loading">Analyzing project with AI...</p>';
 
-    const res = await fetch(`${API}/analytics/projects/${currentProjectId}/insights`);
-    const data = await res.json();
+    try {
+        const res = await fetch(`${API}/analytics/projects/${currentProjectId}/insights`);
+        if (!res.ok) {
+            insightsText.textContent = 'AI insights are temporarily unavailable. Please try again later.';
+            return;
+        }
+        const data = await res.json();
 
-    insightsText.innerHTML = data.ai_insight
-    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^# (.+)$/gm, '<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ol>$1</ol>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>');
+        const rendered = data.ai_insight
+            .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+            .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+            .replace(/^# (.+)$/gm, '<h3>$1</h3>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/gs, '<ol>$1</ol>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+
+        insightsText.innerHTML = DOMPurify.sanitize(rendered);
+    } catch {
+        insightsText.textContent = 'Error connecting to server.';
+    }
 });
-// Init
+
 loadProjects();

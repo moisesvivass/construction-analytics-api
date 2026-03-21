@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.database import get_db
-from app import models, schemas
-from typing import List
+from app.limiter import limiter
+from app import models
 import pandas as pd
 import io
+import re
 import anthropic
 import os
 
@@ -15,33 +16,36 @@ router = APIRouter(
     tags=["analytics"]
 )
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+_SAFE_FILENAME_RE = re.compile(r'[^a-zA-Z0-9_\-]')
+
+_anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+if not _anthropic_api_key:
+    raise RuntimeError(
+        "ANTHROPIC_API_KEY environment variable is not set. "
+        "Required for the /analytics/projects/{id}/insights endpoint. "
+        "Add it to your .env file."
+    )
+client = anthropic.Anthropic(api_key=_anthropic_api_key)
 
 
-@router.get("/projects/{project_id}/summary")
-def get_project_summary(project_id: int, db: Session = Depends(get_db)):
-    project = db.query(models.Project).filter(
-        models.Project.id == project_id
-    ).first()
+def get_project_or_404(db: Session, project_id: int):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Project with id {project_id} not found"
         )
+    return project
 
-    expenses = db.query(models.Expense).filter(
+
+@router.get("/projects/{project_id}/summary")
+@limiter.limit("30/minute")
+def get_project_summary(request: Request, project_id: int, db: Session = Depends(get_db)):
+    project = get_project_or_404(db, project_id)
+
+    total_spent = db.query(func.sum(models.Expense.amount)).filter(
         models.Expense.project_id == project_id
-    ).all()
-
-    if expenses:
-        df = pd.DataFrame([{
-            "amount": e.amount,
-            "category": e.category.name,
-            "date": e.date
-        } for e in expenses])
-        total_spent = df["amount"].sum()
-    else:
-        total_spent = 0
+    ).scalar() or 0
 
     remaining = project.budget - total_spent
     overrun = bool(total_spent > project.budget)
@@ -60,7 +64,8 @@ def get_project_summary(project_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/overruns")
-def get_overruns(db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def get_overruns(request: Request, db: Session = Depends(get_db)):
     total_projects = db.query(models.Project).count()
 
     rows = (
@@ -96,17 +101,13 @@ def get_overruns(db: Session = Depends(get_db)):
 
 
 @router.get("/projects/{project_id}/breakdown")
-def get_expense_breakdown(project_id: int, db: Session = Depends(get_db)):
-    project = db.query(models.Project).filter(
-        models.Project.id == project_id
-    ).first()
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project with id {project_id} not found"
-        )
+@limiter.limit("30/minute")
+def get_expense_breakdown(request: Request, project_id: int, db: Session = Depends(get_db)):
+    project = get_project_or_404(db, project_id)
 
-    expenses = db.query(models.Expense).filter(
+    expenses = db.query(models.Expense).options(
+        joinedload(models.Expense.category)
+    ).filter(
         models.Expense.project_id == project_id
     ).all()
 
@@ -136,17 +137,13 @@ def get_expense_breakdown(project_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/projects/{project_id}/export")
-def export_project_expenses(project_id: int, db: Session = Depends(get_db)):
-    project = db.query(models.Project).filter(
-        models.Project.id == project_id
-    ).first()
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project with id {project_id} not found"
-        )
+@limiter.limit("10/minute")
+def export_project_expenses(request: Request, project_id: int, db: Session = Depends(get_db)):
+    project = get_project_or_404(db, project_id)
 
-    expenses = db.query(models.Expense).filter(
+    expenses = db.query(models.Expense).options(
+        joinedload(models.Expense.category)
+    ).filter(
         models.Expense.project_id == project_id
     ).all()
 
@@ -159,6 +156,7 @@ def export_project_expenses(project_id: int, db: Session = Depends(get_db)):
     } for e in expenses]
 
     df = pd.DataFrame(data)
+    total_amount = df["Amount"].sum() if not df.empty else 0
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -169,49 +167,38 @@ def export_project_expenses(project_id: int, db: Session = Depends(get_db)):
             "Value": [
                 project.name,
                 project.budget,
-                df["Amount"].sum() if not df.empty else 0,
-                project.budget - (df["Amount"].sum() if not df.empty else 0),
-                "YES" if df["Amount"].sum() > project.budget else "NO"
+                total_amount,
+                project.budget - total_amount,
+                "YES" if total_amount > project.budget else "NO"
             ]
         }
-        summary_df = pd.DataFrame(summary_data)
-        summary_df.to_excel(writer, index=False, sheet_name="Summary")
+        pd.DataFrame(summary_data).to_excel(writer, index=False, sheet_name="Summary")
 
     output.seek(0)
-    filename = f"project_{project_id}_{project.name.replace(' ', '_')}_expenses.xlsx"
+    safe_name = _SAFE_FILENAME_RE.sub('_', project.name)
+    filename = f"project_{project_id}_{safe_name}_expenses.xlsx"
 
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
+
 @router.get("/projects/{project_id}/insights")
-def get_project_insights(project_id: int, db: Session = Depends(get_db)):
-    project = db.query(models.Project).filter(
-        models.Project.id == project_id
-    ).first()
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project with id {project_id} not found"
-        )
+@limiter.limit("5/minute")
+def get_project_insights(request: Request, project_id: int, db: Session = Depends(get_db)):
+    project = get_project_or_404(db, project_id)
 
-    expenses = db.query(models.Expense).filter(
-        models.Expense.project_id == project_id
-    ).all()
-
-    if expenses:
-        df = pd.DataFrame([{
-            "amount": e.amount,
-            "category": e.category.name
-        } for e in expenses])
-        total_spent = float(df["amount"].sum())
-        breakdown = df.groupby("category")["amount"].sum()
-        breakdown_dict = {k: round(float(v), 2) for k, v in breakdown.items()}
-    else:
-        total_spent = 0
-        breakdown_dict = {}
+    rows = (
+        db.query(models.Category.name, func.sum(models.Expense.amount))
+        .join(models.Expense, models.Expense.category_id == models.Category.id)
+        .filter(models.Expense.project_id == project_id)
+        .group_by(models.Category.name)
+        .all()
+    )
+    breakdown_dict = {name: round(float(amt), 2) for name, amt in rows}
+    total_spent = float(sum(breakdown_dict.values()))
 
     percent_used = round((total_spent / project.budget) * 100, 2) if project.budget > 0 else 0
     remaining = project.budget - total_spent
@@ -242,8 +229,6 @@ Provide a professional financial analysis with specific recommendations based on
     except Exception:
         raise HTTPException(status_code=503, detail="AI insights temporarily unavailable")
 
-    insight = message.content[0].text
-
     return {
         "project_id": project_id,
         "project_name": project.name,
@@ -254,5 +239,5 @@ Provide a professional financial analysis with specific recommendations based on
             "percent_used": percent_used,
             "overrun": overrun
         },
-        "ai_insight": insight
+        "ai_insight": message.content[0].text
     }
