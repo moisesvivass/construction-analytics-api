@@ -150,6 +150,6 @@ Visit `http://127.0.0.1:8000/docs` to explore the API locally.
 
 ## 👨‍💻 Author
 
-**Moises Vivas** — CS graduate building backend systems in Python · Toronto, Canada
+**Moises Vivas** — IT graduate and self-taught developer | Python · Data Analytics · AI integrations
 
 - GitHub: [github.com/moisesvivass](https://github.com/moisesvivass)
