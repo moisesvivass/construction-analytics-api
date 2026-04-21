@@ -39,7 +39,6 @@ def get_project_or_404(db: Session, project_id: int):
 
 
 @router.get("/projects/{project_id}/summary")
-@limiter.limit("30/minute")
 def get_project_summary(request: Request, project_id: int, db: Session = Depends(get_db)):
     project = get_project_or_404(db, project_id)
 
@@ -64,7 +63,6 @@ def get_project_summary(request: Request, project_id: int, db: Session = Depends
 
 
 @router.get("/overruns")
-@limiter.limit("30/minute")
 def get_overruns(request: Request, db: Session = Depends(get_db)):
     total_projects = db.query(models.Project).count()
 
@@ -101,7 +99,6 @@ def get_overruns(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/projects/{project_id}/breakdown")
-@limiter.limit("30/minute")
 def get_expense_breakdown(request: Request, project_id: int, db: Session = Depends(get_db)):
     project = get_project_or_404(db, project_id)
 
@@ -137,7 +134,6 @@ def get_expense_breakdown(request: Request, project_id: int, db: Session = Depen
 
 
 @router.get("/projects/{project_id}/export")
-@limiter.limit("10/minute")
 def export_project_expenses(request: Request, project_id: int, db: Session = Depends(get_db)):
     project = get_project_or_404(db, project_id)
 
@@ -186,7 +182,6 @@ def export_project_expenses(request: Request, project_id: int, db: Session = Dep
 
 
 @router.get("/projects/{project_id}/insights")
-@limiter.limit("5/minute")
 def get_project_insights(request: Request, project_id: int, db: Session = Depends(get_db)):
     project = get_project_or_404(db, project_id)
 
