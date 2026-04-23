@@ -150,6 +150,7 @@ Visit `http://127.0.0.1:8000/docs` to explore the API locally.
 
 ## 👨‍💻 Author
 
-**Moises Vivas** — Operations professional building data tools and web applications with Python and AI-assisted development · Toronto, Canada
+**Moises Vivas** — AI Application Developer · Python · FastAPI · PostgreSQL · Claude API · Toronto, Canada
 
 - GitHub: [github.com/moisesvivass](https://github.com/moisesvivass)
+- LinkedIn: [linkedin.com/in/moisesvivas](https://linkedin.com/in/moisesvivas)
