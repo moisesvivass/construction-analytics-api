@@ -3,13 +3,14 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.database import get_db
-from app.limiter import limiter
 from app import models
-import pandas as pd
 import io
 import re
 import anthropic
 import os
+
+# pandas / openpyxl are heavy (~150-200 MB resident). Imported lazily inside the
+# two endpoints that need them so the rest of the service stays small.
 
 router = APIRouter(
     prefix="/analytics",
@@ -115,6 +116,7 @@ def get_expense_breakdown(request: Request, project_id: int, db: Session = Depen
             "breakdown": []
         }
 
+    import pandas as pd
     df = pd.DataFrame([{
         "amount": e.amount,
         "category": e.category.name
@@ -151,6 +153,7 @@ def export_project_expenses(request: Request, project_id: int, db: Session = Dep
         "Notes": e.notes or ""
     } for e in expenses]
 
+    import pandas as pd
     df = pd.DataFrame(data)
     total_amount = df["Amount"].sum() if not df.empty else 0
 

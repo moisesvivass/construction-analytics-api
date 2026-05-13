@@ -3,9 +3,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from app.limiter import limiter
 from dotenv import load_dotenv
 from app.database import engine
 from app import models
@@ -21,9 +18,6 @@ app = FastAPI(
     description="API for analyzing construction project costs, budgets, and overruns",
     version="1.0.0"
 )
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 allowed_origins = [o.strip() for o in _raw_origins.split(",")]
