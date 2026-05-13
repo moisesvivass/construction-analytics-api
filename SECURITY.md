@@ -15,7 +15,6 @@
 
 ### API Security
 - CORS configured to allow only specific origins
-- Rate limiting enabled via SlowAPI
 - Input validation on all endpoints via Pydantic
 - SQL injection protection via SQLAlchemy ORM
 

@@ -44,6 +44,13 @@ Copy `.env.example` to `.env` and fill in:
 - Pydantic schemas in `app/schemas.py` define request/response shapes — keep these in sync with `app/models.py`.
 - `numpy.bool` serialization issues have come up before — use `bool()` to cast before returning from analytics endpoints.
 - The frontend API base URL is an empty string `''` in `dashboard.js`, so all requests use relative URLs and work both locally and in production.
-- CORS is whitelisted to `localhost:3000` and `127.0.0.1:8000` — update `app/main.py` if adding new origins.
-- Rate limiting is applied via SlowAPI — limits are set per endpoint in the analytics router.
+- CORS is whitelisted via the `ALLOWED_ORIGINS` env var — update `app/main.py` if adding new defaults.
+- **Pandas + openpyxl are lazy-imported** inside the two analytics endpoints that need them (`breakdown` and `export`). Do not move them back to the top of the file — they cost ~150-200 MB of resident memory per worker and the service runs on a single-instance Railway deployment with a tight memory budget.
 - No authentication exists — this is intentional (internal/demo use). See `SECURITY.md` for the production roadmap.
+
+## Railway Memory Budget
+
+This is a low-traffic portfolio demo. Memory hygiene matters because Railway bills per GB-minute. Rules of thumb:
+- Keep baseline RSS under 100 MB. Anything that adds a permanent 50+ MB import (pandas, numpy, torch) belongs inside the function that uses it, not at module top.
+- `Procfile` ships with `--limit-max-requests 500` so the worker recycles periodically and any short-lived growth is reclaimed.
+- SQLAlchemy engine has `pool_pre_ping=True` and `pool_recycle=1800` to keep DB connections healthy without piling up dead sockets.

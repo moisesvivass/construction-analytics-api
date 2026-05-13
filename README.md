@@ -43,7 +43,7 @@ A production-ready REST API for analyzing construction project costs, budgets, a
 - **AI Insights** — Claude Haiku generates per-project financial analysis in natural language
 - **Excel Export** — Two-sheet workbook (Expenses + Summary) generated with Pandas + openpyxl
 - **Interactive Dashboard** — Chart.js bar chart and donut chart, rendered via Jinja2 templates
-- **Rate Limiting** — SlowAPI middleware protecting all endpoints
+- **Memory-Efficient** — Heavy imports (Pandas, openpyxl) are lazy-loaded so the service stays under ~80 MB resident on Railway
 - **CORS** — Configurable origins via environment variable
 
 ## 🛠️ Tech Stack
@@ -58,7 +58,6 @@ A production-ready REST API for analyzing construction project costs, budgets, a
 | Analytics | Pandas 3.0 + openpyxl |
 | AI | Anthropic Claude Haiku |
 | Frontend | Jinja2 + Chart.js |
-| Rate Limiting | SlowAPI |
 | Deployment | Railway |
 
 ## 📡 API Endpoints
@@ -128,7 +127,6 @@ Visit `http://127.0.0.1:8000/docs` to explore the API locally.
 ## 🔒 Security
 
 - CORS configured with allowlist via `ALLOWED_ORIGINS` environment variable
-- SlowAPI rate limiting on all endpoints
 - Pydantic v2 input validation on all request bodies
 - API keys loaded exclusively from environment variables
 - `.env` excluded from version control via `.gitignore`
@@ -142,8 +140,7 @@ Visit `http://127.0.0.1:8000/docs` to explore the API locally.
 - [x] Excel export (two-sheet workbook)
 - [x] Interactive dashboard with Chart.js
 - [x] Budget overrun detection
-- [x] Rate limiting with SlowAPI
-- [x] Deployed to Railway with PostgreSQL
+- [x] Deployed to Railway with PostgreSQL (memory-optimized, ~80 MB baseline)
 - [ ] JWT Authentication
 - [ ] Pagination on list endpoints
 - [ ] Unit tests with pytest
