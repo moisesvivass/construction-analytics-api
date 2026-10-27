@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.security import Pagination
 from app import models, schemas
 from typing import List
 
@@ -11,13 +12,13 @@ router = APIRouter(
 
 
 @router.get("/", response_model=List[schemas.ExpenseResponse])
-def get_expenses(db: Session = Depends(get_db)):
-    expenses = db.query(models.Expense).all()
+def get_expenses(page: Pagination = Depends(), db: Session = Depends(get_db)):
+    expenses = page.apply(db.query(models.Expense), models.Expense.id).all()
     return expenses
 
 
 @router.get("/project/{project_id}", response_model=List[schemas.ExpenseResponse])
-def get_expenses_by_project(project_id: int, db: Session = Depends(get_db)):
+def get_expenses_by_project(project_id: int, page: Pagination = Depends(), db: Session = Depends(get_db)):
     project = db.query(models.Project).filter(
         models.Project.id == project_id
     ).first()
@@ -26,9 +27,9 @@ def get_expenses_by_project(project_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Project with id {project_id} not found"
         )
-    expenses = db.query(models.Expense).filter(
+    expenses = page.apply(db.query(models.Expense).filter(
         models.Expense.project_id == project_id
-    ).all()
+    ), models.Expense.id).all()
     return expenses
 
 

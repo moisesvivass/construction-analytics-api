@@ -36,7 +36,7 @@ A production-ready REST API for analyzing construction project costs, budgets, a
 
 ## ✨ Features
 
-- **Project Management** — Full CRUD with budget, status, location, and date tracking
+- **Project Management** — Full CRUD (writes behind an admin API key) with budget, status, location, and date tracking
 - **Expense Tracking** — Log expenses by category with Pydantic v2 validation
 - **Budget Analytics** — Real-time summary: total budget, actuals, remaining, % used
 - **Overrun Detection** — Automatic alerts flagging overrun amount and percentage
@@ -98,6 +98,8 @@ A production-ready REST API for analyzing construction project costs, budgets, a
 | `GET` | `/analytics/projects/{id}/export` | Download Excel report |
 | `GET` | `/analytics/overruns` | List all projects over budget |
 
+> **Read-only demo:** `POST`, `PUT` and `DELETE` endpoints require an `X-API-Key` header matching the `ADMIN_API_KEY` environment variable. If `ADMIN_API_KEY` is not set, writes are disabled. List endpoints accept `skip` and `limit` (max 100).
+
 > **Note:** Fixed-path GET endpoints (e.g. `/projects/active`) are declared before parameterized routes (`/projects/{id}`) to avoid FastAPI routing conflicts — a key pattern when mixing static and dynamic paths.
 
 ## ⚙️ Local Setup
@@ -114,6 +116,7 @@ Create a `.env` file in the project root:
 ```env
 DATABASE_URL=postgresql://postgres@localhost:5432/construction_analytics
 ANTHROPIC_API_KEY=sk-ant-your-key-here
+ADMIN_API_KEY=a-long-random-string
 ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:8000
 ```
 
@@ -126,11 +129,14 @@ Visit `http://127.0.0.1:8000/docs` to explore the API locally.
 
 ## 🔒 Security
 
+- Public demo is read-only: write endpoints require an admin API key (`X-API-Key`)
+- AI insights are cached per project and rate-limited (5/hour per IP, 50/day overall) to cap API spend
+- Excel export is rate-limited; list endpoints are paginated (max 100 rows)
+- Pydantic v2 validation with length and amount limits on all request bodies
+- Project data is passed to Claude as data only (system prompt guards against prompt injection)
 - CORS configured with allowlist via `ALLOWED_ORIGINS` environment variable
-- Pydantic v2 input validation on all request bodies
-- API keys loaded exclusively from environment variables
-- `.env` excluded from version control via `.gitignore`
-- Row-level data scoping — users only access their own records
+- CDN scripts pinned to exact versions with Subresource Integrity hashes
+- API keys loaded exclusively from environment variables; `.env` excluded via `.gitignore`
 
 ## ✅ Roadmap
 
@@ -141,13 +147,14 @@ Visit `http://127.0.0.1:8000/docs` to explore the API locally.
 - [x] Interactive dashboard with Chart.js
 - [x] Budget overrun detection
 - [x] Deployed to Railway with PostgreSQL (memory-optimized, ~80 MB baseline)
+- [x] Read-only public demo with admin API key for writes
+- [x] Pagination on list endpoints
 - [ ] JWT Authentication
-- [ ] Pagination on list endpoints
 - [ ] Unit tests with pytest
 
 ## 👨‍💻 Author
 
-**Moises Vivas** — AI Application Developer · Python · FastAPI · PostgreSQL · Claude API · Toronto, Canada
+**Moises Vivas** — Data and analytics tools · Python · SQL · React · AI-assisted development · Toronto, Canada
 
 - GitHub: [github.com/moisesvivass](https://github.com/moisesvivass)
 - LinkedIn: [linkedin.com/in/moisesvivas](https://linkedin.com/in/moisesvivas)

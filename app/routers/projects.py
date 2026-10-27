@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.security import Pagination
 from app import models, schemas
 from app.models import ProjectStatus
 from typing import List
@@ -12,15 +13,15 @@ router = APIRouter(
 
 
 @router.get("/", response_model=List[schemas.ProjectResponse])
-def get_projects(db: Session = Depends(get_db)):
-    projects = db.query(models.Project).all()
+def get_projects(page: Pagination = Depends(), db: Session = Depends(get_db)):
+    projects = page.apply(db.query(models.Project), models.Project.id).all()
     return projects
 
 @router.get("/active")
-def get_active_projects(db: Session = Depends(get_db)):
-    projects = db.query(models.Project).filter(
+def get_active_projects(page: Pagination = Depends(), db: Session = Depends(get_db)):
+    projects = page.apply(db.query(models.Project).filter(
         models.Project.status == ProjectStatus.active
-    ).all()
+    ), models.Project.id).all()
     return projects
 
 

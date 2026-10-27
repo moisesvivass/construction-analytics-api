@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.security import Pagination
 from app import models, schemas
 from typing import List
 
@@ -11,8 +12,8 @@ router = APIRouter(
 
 
 @router.get("/", response_model=List[schemas.CategoryResponse])
-def get_categories(db: Session = Depends(get_db)):
-    categories = db.query(models.Category).all()
+def get_categories(page: Pagination = Depends(), db: Session = Depends(get_db)):
+    categories = page.apply(db.query(models.Category), models.Category.id).all()
     return categories
 
 

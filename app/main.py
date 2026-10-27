@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from app.database import engine
 from app import models
 from app.routers import projects, expenses, categories, analytics
+from app.security import require_admin_for_writes
 import os
 
 load_dotenv()
@@ -33,10 +34,9 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-app.include_router(projects.router)
-app.include_router(expenses.router)
-app.include_router(categories.router)
-app.include_router(analytics.router)
+# Public demo is read-only: every non-GET route on these routers needs the admin key.
+for router in (projects.router, expenses.router, categories.router, analytics.router):
+    app.include_router(router, dependencies=[Depends(require_admin_for_writes)])
 
 
 @app.get("/")

@@ -1,12 +1,18 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import date, datetime
 from typing import Optional
 from app.models import ProjectStatus
 
 
+# Max lengths mirror the DB columns; free-text fields get a cap so nobody can
+# fill the database with one request.
+MAX_TEXT = 2000
+MAX_AMOUNT = 1_000_000_000
+
+
 class CategoryBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(min_length=1, max_length=100)
+    description: Optional[str] = Field(default=None, max_length=MAX_TEXT)
 
 
 class CategoryCreate(CategoryBase):
@@ -20,10 +26,10 @@ class CategoryResponse(CategoryBase):
 
 
 class ExpenseBase(BaseModel):
-    description: str
-    amount: float
+    description: str = Field(min_length=1, max_length=300)
+    amount: float = Field(le=MAX_AMOUNT)
     date: date
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=MAX_TEXT)
     project_id: int
     category_id: int
 
@@ -48,10 +54,10 @@ class ExpenseResponse(ExpenseBase):
 
 
 class ProjectBase(BaseModel):
-    name: str
-    description: Optional[str] = None
-    location: Optional[str] = None
-    budget: float
+    name: str = Field(min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=MAX_TEXT)
+    location: Optional[str] = Field(default=None, max_length=200)
+    budget: float = Field(le=MAX_AMOUNT)
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: Optional[ProjectStatus] = ProjectStatus.active
