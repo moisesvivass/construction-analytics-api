@@ -31,11 +31,12 @@ class Pagination:
 
 
 def client_ip(request: Request) -> str:
-    # Railway's proxy appends the real client IP as the last X-Forwarded-For
-    # entry; earlier entries are client-controlled and can be spoofed.
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[-1].strip()
+    # Railway's edge overwrites X-Real-IP with the caller's address on every
+    # request, so clients cannot spoof it. X-Forwarded-For ends in a rotating
+    # internal proxy IP, which would split one visitor across many buckets.
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
     return request.client.host if request.client else "unknown"
 
 
