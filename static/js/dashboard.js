@@ -186,7 +186,9 @@ document.getElementById('insights-btn').addEventListener('click', async () => {
     try {
         const res = await fetch(`${API}/analytics/projects/${currentProjectId}/insights`);
         if (!res.ok) {
-            insightsText.textContent = 'AI insights are temporarily unavailable. Please try again later.';
+            insightsText.textContent = res.status === 429
+                ? 'AI insights limit reached for now. Please try again later.'
+                : 'AI insights are temporarily unavailable. Please try again later.';
             return;
         }
         const data = await res.json();

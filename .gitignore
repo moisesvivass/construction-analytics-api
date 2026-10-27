@@ -19,3 +19,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 code_review_dump.txt
+
+# Claude Code instructions
+CLAUDE.md
