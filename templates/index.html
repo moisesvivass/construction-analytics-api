@@ -4,92 +4,163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Construction Analytics Dashboard</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js" integrity="sha384-Emf5ZVIUiarAdhkgtqK+5/Z5qIvM6QoVrS+qAVtfyZVuD5lIHrac0me485+Antp0" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous"></script>
+    <meta name="description" content="Budget vs. actual cost tracking for Canadian construction projects, with overrun detection and AI insights.">
+    <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v }}">
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js" integrity="sha384-Emf5ZVIUiarAdhkgtqK+5/Z5qIvM6QoVrS+qAVtfyZVuD5lIHrac0me485+Antp0" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous"></script>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <h1>Construction Analytics</h1>
-            <p>Project Cost Management Dashboard</p>
+    <header class="site-header">
+        <div class="container header-inner">
+            <div>
+                <h1>Construction Analytics</h1>
+                <p class="tagline">Budget vs. actual costs across Canadian construction projects, with overrun detection and AI insights.</p>
+            </div>
+            <div class="header-links">
+                <span class="pill">Read-only demo</span>
+                <a href="/docs" class="header-link">API docs</a>
+                <a href="https://github.com/moisesvivass/construction-analytics-api" class="header-link" target="_blank" rel="noopener">GitHub</a>
+            </div>
         </div>
     </header>
 
-    <main>
-        <!-- Projects List -->
-        <section class="section">
-            <h2>Active Projects</h2>
-            <div id="projects-grid" class="projects-grid">
-                <p class="loading">Loading projects...</p>
+    <main class="container">
+        <!-- Portfolio KPIs -->
+        <section aria-labelledby="portfolio-heading">
+            <h2 id="portfolio-heading" class="section-title">Portfolio overview</h2>
+            <div class="kpi-grid">
+                <div class="kpi">
+                    <span class="kpi-label">Total budget</span>
+                    <span class="kpi-value" id="kpi-budget">–</span>
+                    <span class="kpi-sub" id="kpi-count"></span>
+                </div>
+                <div class="kpi">
+                    <span class="kpi-label">Actual spend</span>
+                    <span class="kpi-value" id="kpi-spent">–</span>
+                    <span class="kpi-sub" id="kpi-used"></span>
+                </div>
+                <div class="kpi">
+                    <span class="kpi-label">Over budget</span>
+                    <span class="kpi-value kpi-critical" id="kpi-over">–</span>
+                    <span class="kpi-sub" id="kpi-over-amount"></span>
+                </div>
+                <div class="kpi">
+                    <span class="kpi-label">At risk</span>
+                    <span class="kpi-value kpi-warning" id="kpi-risk">–</span>
+                    <span class="kpi-sub" id="kpi-risk-sub"></span>
+                </div>
             </div>
         </section>
 
-        <!-- Project Detail -->
-        <section class="section" id="project-detail" style="display:none">
-            <div class="detail-header">
-                <h2 id="detail-title">Project Detail</h2>
-                <div class="header-buttons">
-                    <button id="export-btn" class="btn-export">Export Excel</button>
-                    <button id="insights-btn" class="btn-insights">AI Insights</button>
+        <!-- Projects -->
+        <section aria-labelledby="projects-heading">
+            <div class="toolbar">
+                <h2 id="projects-heading" class="section-title">Projects</h2>
+                <div class="controls">
+                    <div class="segmented" role="group" aria-label="Filter by status" id="status-filter">
+                        <button type="button" data-status="all" aria-pressed="true">All</button>
+                        <button type="button" data-status="active" aria-pressed="false">Active</button>
+                        <button type="button" data-status="completed" aria-pressed="false">Completed</button>
+                        <button type="button" data-status="on_hold" aria-pressed="false">On hold</button>
+                    </div>
+                    <label class="sort">
+                        <span>Sort</span>
+                        <select id="sort-select">
+                            <option value="used">Highest % used</option>
+                            <option value="budget">Largest budget</option>
+                            <option value="name">Name (A–Z)</option>
+                        </select>
+                    </label>
                 </div>
             </div>
-
-            <!-- Summary Cards -->
-            <div class="cards-grid">
-                <div class="card">
-                    <span class="card-label">Budget</span>
-                    <span class="card-value" id="card-budget">-</span>
-                </div>
-                <div class="card">
-                    <span class="card-label">Actuals</span>
-                    <span class="card-value" id="card-spent">-</span>
-                </div>
-                <div class="card">
-                    <span class="card-label">Remaining</span>
-                    <span class="card-value" id="card-remaining">-</span>
-                </div>
-                <div class="card">
-                    <span class="card-label">% Used</span>
-                    <span class="card-value" id="card-percent">-</span>
-                </div>
-            </div>
-
-            <div id="insights-box" style="display:none" class="insights-box">
-                <h3>AI Analysis</h3>
-                <div id="insights-text"></div>
-            </div>
-
-            <!-- Charts -->
-            <div class="charts-grid">
-                <div class="chart-box">
-                    <h3>Budget vs Actuals</h3>
-                    <canvas id="budget-chart"></canvas>
-                </div>
-                <div class="chart-box">
-                    <h3>Cost Breakdown</h3>
-                    <canvas id="breakdown-chart"></canvas>
-                </div>
-            </div>
-
-            <!-- Expenses Table -->
-            <div class="table-box">
-                <h3>Expenses</h3>
-                <table id="expenses-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="expenses-body"></tbody>
-                </table>
+            <div id="projects-grid" class="projects-grid" aria-live="polite">
+                <p class="muted">Loading projects…</p>
             </div>
         </section>
     </main>
 
-    <script src="/static/js/dashboard.js"></script>
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p><strong>Moises Vivas</strong> — Data and analytics tools · Python · SQL · React · AI-assisted development · Toronto, Canada</p>
+            <p class="footer-links">
+                <a href="https://github.com/moisesvivass" target="_blank" rel="noopener">GitHub</a>
+                <a href="https://linkedin.com/in/moisesvivas" target="_blank" rel="noopener">LinkedIn</a>
+            </p>
+            <p class="muted">Demo data. The public API is read-only; writes require an admin key.</p>
+        </div>
+    </footer>
+
+    <!-- Project detail drawer -->
+    <dialog class="drawer" id="project-detail" aria-labelledby="detail-title">
+        <div class="drawer-panel">
+        <div class="drawer-header">
+            <div class="drawer-toolbar">
+                <div class="drawer-nav">
+                    <button type="button" class="btn-ghost" id="prev-project" aria-label="Previous project">‹ Previous</button>
+                    <span class="muted" id="project-position" aria-live="polite"></span>
+                    <button type="button" class="btn-ghost" id="next-project" aria-label="Next project">Next ›</button>
+                </div>
+                <div class="drawer-header-actions">
+                    <button type="button" class="btn-ghost" id="drawer-expand" aria-pressed="false">⤢ Full screen</button>
+                    <button type="button" class="btn-ghost" id="drawer-close" aria-label="Close project details" title="Close (Esc)">✕</button>
+                </div>
+            </div>
+            <div>
+                <span class="status-badge" id="detail-status"></span>
+                <h2 id="detail-title">Project</h2>
+                <p class="muted" id="detail-location"></p>
+            </div>
+        </div>
+
+        <div class="drawer-body">
+            <div class="detail-actions">
+                <button type="button" id="insights-btn" class="btn btn-primary">AI Insights</button>
+                <button type="button" id="export-btn" class="btn btn-secondary">Export Excel</button>
+            </div>
+
+            <div id="overrun-alert" class="alert alert-critical" role="status" hidden></div>
+
+            <div class="detail-kpis">
+                <div class="kpi kpi-sm"><span class="kpi-label">Budget</span><span class="kpi-value" id="card-budget">–</span></div>
+                <div class="kpi kpi-sm"><span class="kpi-label">Actuals</span><span class="kpi-value" id="card-spent">–</span></div>
+                <div class="kpi kpi-sm"><span class="kpi-label">Remaining</span><span class="kpi-value" id="card-remaining">–</span></div>
+                <div class="kpi kpi-sm"><span class="kpi-label">% used</span><span class="kpi-value" id="card-percent">–</span></div>
+            </div>
+
+            <div id="insights-box" class="insights-box" hidden>
+                <h3>AI analysis</h3>
+                <div id="insights-text"></div>
+            </div>
+
+            <p id="no-expenses" class="panel muted" hidden>No expenses recorded yet for this project.</p>
+
+            <div class="detail-charts" id="detail-charts">
+            <div class="panel">
+                <h3>Cumulative spend vs. budget</h3>
+                <div class="chart-wrap"><canvas id="budget-chart" aria-label="Cumulative spend over time compared with the budget"></canvas></div>
+            </div>
+
+            <div class="panel">
+                <h3>Cost by category</h3>
+                <div class="chart-wrap chart-wrap-tall"><canvas id="breakdown-chart" aria-label="Spend by cost category"></canvas></div>
+            </div>
+            </div>
+
+            <div class="panel" id="expenses-panel">
+                <h3>Expenses</h3>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Amount</th></tr>
+                        </thead>
+                        <tbody id="expenses-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        </div>
+    </dialog>
+
+    <script defer src="/static/js/dashboard.js?v={{ asset_v }}"></script>
 </body>
 </html>

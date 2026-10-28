@@ -9,6 +9,7 @@ from app import models
 from app.routers import projects, expenses, categories, analytics
 from app.security import require_admin_for_writes
 import os
+from pathlib import Path
 
 load_dotenv()
 
@@ -33,6 +34,11 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+# Cache-busting token for /static URLs: changes whenever a static file changes,
+# so returning visitors never mix new HTML with cached old CSS/JS.
+templates.env.globals["asset_v"] = max(
+    int(p.stat().st_mtime) for p in Path("static").rglob("*") if p.is_file()
+)
 
 # Public demo is read-only: every non-GET route on these routers needs the admin key.
 for router in (projects.router, expenses.router, categories.router, analytics.router):
