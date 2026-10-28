@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Construction Analytics Dashboard</title>
     <meta name="description" content="Budget vs. actual cost tracking for Canadian construction projects, with overrun detection and AI insights.">
+    {#- Link previews (LinkedIn, Slack, X) need absolute URLs. -#}
+    {% set site = "https://" ~ request.url.netloc %}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Construction Analytics">
+    <meta property="og:title" content="Construction Analytics — Budget vs. actual cost tracking">
+    <meta property="og:description" content="Live dashboard tracking 16 Canadian construction projects: budget overruns flagged at a glance, cost breakdowns and AI-generated financial insights. Python, FastAPI, PostgreSQL, Claude.">
+    <meta property="og:url" content="{{ site }}/dashboard">
+    <meta property="og:image" content="{{ site }}/static/img/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="627">
+    <meta property="og:image:alt" content="Construction Analytics dashboard showing portfolio KPIs and projects over budget">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="author" content="Moises Vivas">
     <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v }}">
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js" integrity="sha384-Emf5ZVIUiarAdhkgtqK+5/Z5qIvM6QoVrS+qAVtfyZVuD5lIHrac0me485+Antp0" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous"></script>
